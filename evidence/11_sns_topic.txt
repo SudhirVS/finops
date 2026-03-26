@@ -1,0 +1,1 @@
+SNS_ARN=arn:aws:sns:us-east-1:948378034607:finops-finops-alerts

@@ -1,0 +1,9 @@
+-------------------------------------------------------------
+|                  GetAnomalySubscriptions                  |
++-----------+---------------------------------+-------------+
+| Frequency |              Name               |  Threshold  |
++-----------+---------------------------------+-------------+
+|  DAILY    |  Default-Services-Subscription  |  None       |
+|  IMMEDIATE|  finops-anomaly-alert-sns       |  20.0       |
+|  DAILY    |  finops-anomaly-alert-email     |  20.0       |
++-----------+---------------------------------+-------------+

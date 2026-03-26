@@ -1,0 +1,5 @@
+
+aws: [ERROR]: An error occurred (NotFoundException) when calling the DescribeKey operation: Alias arn:aws:kms:us-east-1:948378034607:alias/finops-finops is not found.
+
+Additional error details:
+message: Alias arn:aws:kms:us-east-1:948378034607:alias/finops-finops is not found.

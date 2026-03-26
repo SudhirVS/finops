@@ -1,0 +1,10 @@
+-----------------------------------------------------
+|                  DescribeBudgets                  |
++--------+-------------------------+-------+--------+
+|  Limit |          Name           | Type  | Unit   |
++--------+-------------------------+-------+--------+
+|  200.0 |  finops-dev-budget      |  COST |  USD   |
+|  1000.0|  finops-monthly-budget  |  COST |  USD   |
+|  500.0 |  finops-prod-budget     |  COST |  USD   |
+|  300.0 |  finops-stage-budget    |  COST |  USD   |
++--------+-------------------------+-------+--------+

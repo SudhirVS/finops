@@ -1,0 +1,229 @@
+============================================================
+  FinOps System — End-to-End Test Evidence Report
+  Account  : 948378034607
+  Region   : us-east-1
+  Project  : finops
+  Run Time : 2026-03-27 00:25:43
+============================================================
+
+--- AWS Identity ---
+--------------------------------------------------------------
+|                      GetCallerIdentity                     |
++---------+--------------------------------------------------+
+|  Account|  948378034607                                    |
+|  Arn    |  arn:aws:iam::948378034607:user/terraform-user   |
+|  UserId |  AIDA5ZT54MGX5Z5QMXULU                           |
++---------+--------------------------------------------------+
+
+PASS | AWS CLI connected — Account: 948378034607
+--- Terraform State ---
+data.archive_file.cleanup_zip
+aws_athena_database.finops
+aws_athena_workgroup.finops
+aws_budgets_budget.monthly
+aws_budgets_budget.per_env["dev"]
+aws_budgets_budget.per_env["prod"]
+aws_budgets_budget.per_env["stage"]
+aws_ce_anomaly_monitor.service_monitor
+aws_ce_anomaly_subscription.alert_email
+aws_ce_anomaly_subscription.alert_sns
+aws_cloudwatch_event_rule.nightly_cleanup
+aws_cloudwatch_event_target.cleanup_target
+aws_cur_report_definition.finops_cur
+aws_iam_role.cleanup_lambda
+aws_iam_role_policy.cleanup_lambda_policy
+aws_lambda_function.cleanup
+aws_lambda_permission.allow_eventbridge
+aws_s3_bucket.cur_bucket
+aws_s3_bucket_policy.cur_bucket_policy
+aws_sns_topic.finops_alerts
+aws_sns_topic_subscription.email_alert
+
+PASS | Terraform state has 21 resources deployed
+--- CUR Report ---
+--------------------------------------------------------------------------
+|                        DescribeReportDefinitions                       |
++---------+-------------+-----------------------------------+------------+
+| Format  |    Name     |             S3Bucket              | TimeUnit   |
++---------+-------------+-----------------------------------+------------+
+|  Parquet|  finops-cur |  finops-cur-reports-948378034607  |  DAILY     |
++---------+-------------+-----------------------------------+------------+
+
+PASS | CUR report 'finops-cur' exists — daily Parquet delivery active
+--- S3 Bucket ---
+----------------------------------------------------------------------
+|                             HeadBucket                             |
++-------------------+------------------------------------------------+
+|  AccessPointAlias |  False                                         |
+|  BucketArn        |  arn:aws:s3:::finops-cur-reports-948378034607  |
+|  BucketRegion     |  us-east-1                                     |
++-------------------+------------------------------------------------+
+
+PASS | S3 bucket 'finops-cur-reports-948378034607' exists and accessible
+WARN | S3 bucket policy not readable
+--- Athena Workgroup ---
+--------------------------------------------
+|               GetWorkGroup               |
++------------+-----------------+-----------+
+| Encryption |      Name       |   State   |
++------------+-----------------+-----------+
+|  None      |  finops-finops  |  ENABLED  |
++------------+-----------------+-----------+
+
+PASS | Athena workgroup 'finops-finops' exists with encryption
+PASS | Athena live query executed successfully (QueryId: e29678a9-0ed0-4f2c-acf8-8b0780a72f50)
+--- Lambda Cleanup Invoke ---
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+|                                                                                                                                                                                                            Invoke                                                                                                                                                                                                             |
++-----------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+|  ExecutedVersion|  $LATEST                                                                                                                                                                                                                                                                                                                                                                                                    |
+|  LogResult      |  U1RBUlQgUmVxdWVzdElkOiAxNzJmNjExYi1mOWE5LTQxMzMtODM5MS1jYTMyZGVjZmViODMgVmVyc2lvbjogJExBVEVTVApFTkQgUmVxdWVzdElkOiAxNzJmNjExYi1mOWE5LTQxMzMtODM5MS1jYTMyZGVjZmViODMKUkVQT1JUIFJlcXVlc3RJZDogMTcyZjYxMWItZjlhOS00MTMzLTgzOTEtY2EzMmRlY2ZlYjgzCUR1cmF0aW9uOiAxMzU5LjQxIG1zCUJpbGxlZCBEdXJhdGlvbjogMjA5NyBtcwlNZW1vcnkgU2l6ZTogMTI4IE1CCU1heCBNZW1vcnkgVXNlZDogOTkgTUIJSW5pdCBEdXJhdGlvbjogNzM3LjI2IG1zCQo=   |
+|  StatusCode     |  200                                                                                                                                                                                                                                                                                                                                                                                                        |
++-----------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+FAIL | Lambda cleanup returned unexpected status: 
+WARN | Lambda logs not yet available
+--- Lambda Chargeback Invoke ---
+
+aws: [ERROR]: An error occurred (ResourceNotFoundException) when calling the Invoke operation: Function not found: arn:aws:lambda:us-east-1:948378034607:function:finops-chargeback
+
+Additional error details:
+Type: User
+
+FAIL | Lambda function 'finops-chargeback' invocation failed
+--- EventBridge Rules ---
+-------------------------------------------------------------
+|                         ListRules                         |
++-------------------------+----------------------+----------+
+|          Name           |      Schedule        |  State   |
++-------------------------+----------------------+----------+
+|  finops-nightly-cleanup |  cron(0 23 * * ? *)  |  ENABLED |
++-------------------------+----------------------+----------+
+
+PASS | EventBridge rules captured — 1 rule(s) ENABLED
+--- AWS Budgets ---
+-----------------------------------------------------
+|                  DescribeBudgets                  |
++--------+-------------------------+-------+--------+
+|  Limit |          Name           | Type  | Unit   |
++--------+-------------------------+-------+--------+
+|  200.0 |  finops-dev-budget      |  COST |  USD   |
+|  1000.0|  finops-monthly-budget  |  COST |  USD   |
+|  500.0 |  finops-prod-budget     |  COST |  USD   |
+|  300.0 |  finops-stage-budget    |  COST |  USD   |
++--------+-------------------------+-------+--------+
+
+PASS | AWS Budgets captured — 4 budget(s) active (monthly + per-env)
+--- Anomaly Monitors ---
+------------------------------------------------------------------------------------------
+|                                   GetAnomalyMonitors                                   |
++------+---------------------------------------------------------------------------------+
+|  Arn |  arn:aws:ce::948378034607:anomalymonitor/87f03a1d-85b6-49a1-ba41-c315fd9123e7   |
+|  Name|  finops-service-monitor                                                         |
+|  Type|  CUSTOM                                                                         |
++------+---------------------------------------------------------------------------------+
+
+PASS | Cost Anomaly Monitor exists
+--- Anomaly Subscriptions ---
+-------------------------------------------------------------
+|                  GetAnomalySubscriptions                  |
++-----------+---------------------------------+-------------+
+| Frequency |              Name               |  Threshold  |
++-----------+---------------------------------+-------------+
+|  DAILY    |  Default-Services-Subscription  |  None       |
+|  IMMEDIATE|  finops-anomaly-alert-sns       |  20.0       |
+|  DAILY    |  finops-anomaly-alert-email     |  20.0       |
++-----------+---------------------------------+-------------+
+
+PASS | Anomaly subscriptions captured — 2 subscription(s) active
+PASS | SNS topic found: arn:aws:sns:us-east-1:948378034607:finops-finops-alerts
+--- SNS Subscriptions ---
+--------------------------------------------------------------------------------------------------------------
+|                                          ListSubscriptionsByTopic                                          |
++----------+-------------------------------------------------------------------------------------------------+
+|  Endpoint|  sdhpaithankar@gmail.com                                                                        |
+|  Protocol|  email                                                                                          |
+|  Status  |  arn:aws:sns:us-east-1:948378034607:finops-finops-alerts:58ca3902-2f87-426b-9359-1e935885cf67   |
++----------+-------------------------------------------------------------------------------------------------+
+
+PASS | SNS subscription confirmed and active
+PASS | Live SNS test alert sent — MessageId: c2552118-35d0-5112-b2ce-4327b67889e8 (check your email)
+--- KMS Key ---
+
+aws: [ERROR]: An error occurred (NotFoundException) when calling the DescribeKey operation: Alias arn:aws:kms:us-east-1:948378034607:alias/finops-finops is not found.
+
+Additional error details:
+message: Alias arn:aws:kms:us-east-1:948378034607:alias/finops-finops is not found.
+
+WARN | KMS key alias not found — check key was created
+--- Tag Policy ---
+-----------------------------------------------------
+|                   ListPolicies                    |
++------------+----------------+---------------------+
+| AwsManaged |      Id        |        Name         |
++------------+----------------+---------------------+
+|  False     |  p-955y11muma  |  FinOps-Tag-Policy  |
++------------+----------------+---------------------+
+
+PASS | Tag Policy 'FinOps-Tag-Policy' exists and enforced at org level
+--- SCP ---
+-------------------------------------------
+|              ListPolicies               |
++-------------+---------------------------+
+|     Id      |           Name            |
++-------------+---------------------------+
+|  p-loe8j57q |  FinOps-Cost-Control-SCP  |
++-------------+---------------------------+
+
+PASS | SCP 'FinOps-Cost-Control-SCP' exists — cost guardrails active
+--- Compute Optimizer ---
+--------------------------------------
+|         GetEnrollmentStatus        |
++-------------------------+----------+
+| MemberAccountsEnrolled  | Status   |
++-------------------------+----------+
+|  None                   |  None    |
++-------------------------+----------+
+
+WARN | Compute Optimizer status not Active — check enrollment
+
+============================================================
+  TEST RESULTS SUMMARY
+  Run Time : 2026-03-27 00:25:43
+  Account  : 948378034607
+------------------------------------------------------------
+  Total    : 21
+  PASS     : 15
+  FAIL     : 2
+  WARN     : 4
+============================================================
+
+Evidence Files:
+00_summary_report.txt
+01_identity.txt
+02_terraform_state.txt
+03_cur_report.txt
+04_s3_bucket.txt
+04b_s3_bucket_policy.txt
+05_athena_workgroup.txt
+05b_athena_query_result.txt
+06_athena_query_id.txt
+06_lambda_cleanup_response.txt
+06b_lambda_cleanup_output.json
+06c_lambda_cleanup_logs.txt
+07_lambda_chargeback_response.txt
+07_lambda_cleanup_response.json
+08_eventbridge_rules.txt
+08_lambda_cleanup_logs.txt
+09_budgets.txt
+09_eventbridge_rules.txt
+10_anomaly_monitors.txt
+10b_anomaly_subscriptions.txt
+11_sns_topic.txt
+11b_sns_subscriptions.txt
+11c_sns_test_alert.txt
+12_kms_key.txt
+13_tag_policy.txt
+14_scp.txt
+15_compute_optimizer.txt
+============================================================

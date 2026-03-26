@@ -116,11 +116,18 @@ else
   fail "S3 bucket '$S3_BUCKET' not found"
 fi
 
-# Capture bucket policy
+# Capture bucket policy — get-bucket-policy returns JSON string, pipe directly
 aws s3api get-bucket-policy --bucket "$S3_BUCKET" \
-  --query Policy --output text 2>/dev/null \
-  | python3 -m json.tool > "$EVIDENCE_DIR/04b_s3_bucket_policy.txt" 2>/dev/null \
-  && pass "S3 bucket policy captured" || warn "S3 bucket policy not readable"
+  --output text 2>/dev/null \
+  | python3 -m json.tool > "$EVIDENCE_DIR/04b_s3_bucket_policy.txt" 2>/dev/null
+if [ -s "$EVIDENCE_DIR/04b_s3_bucket_policy.txt" ]; then
+  pass "S3 bucket policy captured"
+else
+  # Policy exists but may be inline — try raw output
+  aws s3api get-bucket-policy --bucket "$S3_BUCKET" \
+    > "$EVIDENCE_DIR/04b_s3_bucket_policy.txt" 2>/dev/null \
+    && pass "S3 bucket policy captured" || warn "S3 bucket policy not readable"
+fi
 
 # ════════════════════════════════════════════════════════════
 # TEST 5 — Athena Workgroup & Database
@@ -173,25 +180,30 @@ fi
 # ════════════════════════════════════════════════════════════
 header "TEST 6: Phase 2 — Lambda Cleanup (Optimization)"
 
-if capture "Lambda Cleanup Invoke" "$EVIDENCE_DIR/06_lambda_cleanup_response.txt" \
-    aws lambda invoke \
-      --function-name "${PROJECT}-cleanup" \
-      --payload "e30=" \
-      --log-type Tail \
-      /tmp/cleanup_out.json; then
+aws lambda invoke \
+  --function-name "${PROJECT}-cleanup" \
+  --payload "e30=" \
+  --log-type Tail \
+  /tmp/cleanup_out.json > /tmp/cleanup_invoke_meta.json 2>&1
+INVOKE_RC=$?
 
-  # Parse response
-  RESPONSE=$(cat /tmp/cleanup_out.json 2>/dev/null)
-  echo "Response: $RESPONSE" >> "$EVIDENCE_DIR/06_lambda_cleanup_response.txt"
-  cp /tmp/cleanup_out.json "$EVIDENCE_DIR/06b_lambda_cleanup_output.json"
+cp /tmp/cleanup_out.json "$EVIDENCE_DIR/06b_lambda_cleanup_output.json" 2>/dev/null
+cp /tmp/cleanup_invoke_meta.json "$EVIDENCE_DIR/06_lambda_cleanup_response.txt" 2>/dev/null
+cat /tmp/cleanup_out.json >> "$EVIDENCE_DIR/06_lambda_cleanup_response.txt" 2>/dev/null
 
-  STATUS=$(echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('statusCode','?'))" 2>/dev/null)
-  ACTIONS=$(echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('actions','?'))" 2>/dev/null)
+if [ $INVOKE_RC -eq 0 ]; then
+  # Response payload is in /tmp/cleanup_out.json (not the invoke metadata)
+  STATUS=$(python3 -c "import json; d=json.load(open('/tmp/cleanup_out.json')); print(d.get('statusCode','?'))" 2>/dev/null)
+  ACTIONS=$(python3 -c "import json; d=json.load(open('/tmp/cleanup_out.json')); print(d.get('actions','?'))" 2>/dev/null)
+  FUNC_ERR=$(python3 -c "import json; d=json.load(open('/tmp/cleanup_invoke_meta.json')); print(d.get('FunctionError',''))" 2>/dev/null)
 
-  if [ "$STATUS" = "200" ]; then
+  echo "--- Lambda Response Payload ---" >> "$EVIDENCE_DIR/06_lambda_cleanup_response.txt"
+  cat /tmp/cleanup_out.json >> "$EVIDENCE_DIR/06_lambda_cleanup_response.txt"
+
+  if [ "$STATUS" = "200" ] && [ -z "$FUNC_ERR" ]; then
     pass "Lambda cleanup executed — statusCode=200, actions=$ACTIONS resources processed"
   else
-    fail "Lambda cleanup returned unexpected status: $STATUS"
+    fail "Lambda cleanup error — statusCode=$STATUS FunctionError=$FUNC_ERR"
   fi
 else
   fail "Lambda function '${PROJECT}-cleanup' invocation failed"
@@ -380,17 +392,21 @@ fi
 # ════════════════════════════════════════════════════════════
 header "TEST 15: Phase 2 — Compute Optimizer Enrollment"
 
-if capture "Compute Optimizer" "$EVIDENCE_DIR/15_compute_optimizer.txt" \
-    aws compute-optimizer get-enrollment-status \
-      --query "{Status:Status,MemberAccountsEnrolled:MemberAccountsEnrolled}" \
-      --output table 2>/dev/null; then
-  if grep -q "Active" "$EVIDENCE_DIR/15_compute_optimizer.txt"; then
-    pass "Compute Optimizer enrolled — rightsizing recommendations active"
-  else
-    warn "Compute Optimizer status not Active — check enrollment"
-  fi
+CO_STATUS=$(aws compute-optimizer get-enrollment-status \
+  --query "status" --output text 2>/dev/null)
+CO_RC=$?
+
+aws compute-optimizer get-enrollment-status \
+  --output table > "$EVIDENCE_DIR/15_compute_optimizer.txt" 2>&1
+
+echo "Parsed status: $CO_STATUS" >> "$EVIDENCE_DIR/15_compute_optimizer.txt"
+
+if [ $CO_RC -eq 0 ] && [ "$CO_STATUS" = "Active" ]; then
+  pass "Compute Optimizer enrolled — rightsizing recommendations active"
+elif [ $CO_RC -eq 0 ]; then
+  warn "Compute Optimizer status: '$CO_STATUS' — may take up to 24h to activate after enrollment"
 else
-  warn "Compute Optimizer status check failed"
+  warn "Compute Optimizer status check failed — may need compute-optimizer:GetEnrollmentStatus permission"
 fi
 
 # ════════════════════════════════════════════════════════════
