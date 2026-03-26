@@ -153,9 +153,10 @@ resource "aws_ce_anomaly_monitor" "service_monitor" {
   })
 }
 
-resource "aws_ce_anomaly_subscription" "alert" {
-  name      = "${var.project}-anomaly-alert"
-  frequency = "DAILY"
+# SNS alerts must use IMMEDIATE frequency (AWS restriction)
+resource "aws_ce_anomaly_subscription" "alert_sns" {
+  name      = "${var.project}-anomaly-alert-sns"
+  frequency = "IMMEDIATE"
 
   monitor_arn_list = [aws_ce_anomaly_monitor.service_monitor.arn]
 
@@ -167,7 +168,28 @@ resource "aws_ce_anomaly_subscription" "alert" {
   threshold_expression {
     dimension {
       key           = "ANOMALY_TOTAL_IMPACT_ABSOLUTE"
-      values        = ["20"]   # alert if anomaly > $20
+      values        = ["20"]
+      match_options = ["GREATER_THAN_OR_EQUAL"]
+    }
+  }
+}
+
+# Email subscribers support DAILY digest
+resource "aws_ce_anomaly_subscription" "alert_email" {
+  name      = "${var.project}-anomaly-alert-email"
+  frequency = "DAILY"
+
+  monitor_arn_list = [aws_ce_anomaly_monitor.service_monitor.arn]
+
+  subscriber {
+    type    = "EMAIL"
+    address = var.alert_email
+  }
+
+  threshold_expression {
+    dimension {
+      key           = "ANOMALY_TOTAL_IMPACT_ABSOLUTE"
+      values        = ["20"]
       match_options = ["GREATER_THAN_OR_EQUAL"]
     }
   }
