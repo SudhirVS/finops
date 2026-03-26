@@ -1,0 +1,21 @@
+# Terraform — providers & plugins (large binaries)
+.terraform/
+.terraform.lock.hcl
+
+# Terraform state (contains sensitive data)
+terraform.tfstate
+terraform.tfstate.backup
+*.tfstate
+*.tfstate.*
+
+# AWS credentials
+.aws/
+credentials
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
