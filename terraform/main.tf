@@ -404,7 +404,7 @@ resource "aws_iam_role_policy" "extra_lambda_policy" {
           "athena:StartQueryExecution", "athena:GetQueryExecution",
           "athena:GetQueryResults", "athena:StopQueryExecution",
           "glue:GetTable", "glue:GetDatabase",
-          "s3:GetObject", "s3:PutObject", "s3:ListBucket",
+          "s3:GetObject", "s3:PutObject", "s3:ListBucket", "s3:GetBucketLocation",
           "compute-optimizer:GetEC2InstanceRecommendations",
           "compute-optimizer:GetLambdaFunctionRecommendations",
           "compute-optimizer:GetEBSVolumeRecommendations"

@@ -180,25 +180,24 @@ fi
 # ════════════════════════════════════════════════════════════
 header "TEST 6: Phase 2 — Lambda Cleanup (Optimization)"
 
+# Invoke Lambda — payload goes to /tmp/cleanup_out.json, CLI metadata to stdout
 aws lambda invoke \
   --function-name "${PROJECT}-cleanup" \
   --payload "e30=" \
-  --log-type Tail \
   /tmp/cleanup_out.json > /tmp/cleanup_invoke_meta.json 2>&1
 INVOKE_RC=$?
 
 cp /tmp/cleanup_out.json "$EVIDENCE_DIR/06b_lambda_cleanup_output.json" 2>/dev/null
 cp /tmp/cleanup_invoke_meta.json "$EVIDENCE_DIR/06_lambda_cleanup_response.txt" 2>/dev/null
-cat /tmp/cleanup_out.json >> "$EVIDENCE_DIR/06_lambda_cleanup_response.txt" 2>/dev/null
+echo "--- Lambda Response Payload ---" >> "$EVIDENCE_DIR/06_lambda_cleanup_response.txt"
+cat /tmp/cleanup_out.json >> "$EVIDENCE_DIR/06_lambda_cleanup_response.txt"
 
 if [ $INVOKE_RC -eq 0 ]; then
-  # Response payload is in /tmp/cleanup_out.json (not the invoke metadata)
+  # Parse payload file directly — separate from CLI metadata
   STATUS=$(python3 -c "import json; d=json.load(open('/tmp/cleanup_out.json')); print(d.get('statusCode','?'))" 2>/dev/null)
   ACTIONS=$(python3 -c "import json; d=json.load(open('/tmp/cleanup_out.json')); print(d.get('actions','?'))" 2>/dev/null)
-  FUNC_ERR=$(python3 -c "import json; d=json.load(open('/tmp/cleanup_invoke_meta.json')); print(d.get('FunctionError',''))" 2>/dev/null)
-
-  echo "--- Lambda Response Payload ---" >> "$EVIDENCE_DIR/06_lambda_cleanup_response.txt"
-  cat /tmp/cleanup_out.json >> "$EVIDENCE_DIR/06_lambda_cleanup_response.txt"
+  # FunctionError is in the CLI metadata table — check for 'Unhandled' string
+  FUNC_ERR=$(grep -o 'Unhandled' /tmp/cleanup_invoke_meta.json 2>/dev/null || true)
 
   if [ "$STATUS" = "200" ] && [ -z "$FUNC_ERR" ]; then
     pass "Lambda cleanup executed — statusCode=200, actions=$ACTIONS resources processed"
@@ -220,17 +219,24 @@ aws logs tail "/aws/lambda/${PROJECT}-cleanup" --since 10m \
 # ════════════════════════════════════════════════════════════
 header "TEST 7: Phase 2 — Lambda Chargeback (Cost Allocation)"
 
-if capture "Lambda Chargeback Invoke" "$EVIDENCE_DIR/07_lambda_chargeback_response.txt" \
-    aws lambda invoke \
-      --function-name "${PROJECT}-chargeback" \
-      --payload "e30=" \
-      /tmp/chargeback_out.json; then
-  cp /tmp/chargeback_out.json "$EVIDENCE_DIR/07b_lambda_chargeback_output.json"
+aws lambda invoke \
+  --function-name "${PROJECT}-chargeback" \
+  --payload "e30=" \
+  /tmp/chargeback_out.json > /tmp/chargeback_meta.json 2>&1
+CHARGEBACK_RC=$?
+
+cp /tmp/chargeback_out.json "$EVIDENCE_DIR/07b_lambda_chargeback_output.json" 2>/dev/null
+cp /tmp/chargeback_meta.json "$EVIDENCE_DIR/07_lambda_chargeback_response.txt" 2>/dev/null
+echo "--- Chargeback Response Payload ---" >> "$EVIDENCE_DIR/07_lambda_chargeback_response.txt"
+cat /tmp/chargeback_out.json >> "$EVIDENCE_DIR/07_lambda_chargeback_response.txt"
+
+if [ $CHARGEBACK_RC -eq 0 ]; then
   STATUS=$(python3 -c "import json; d=json.load(open('/tmp/chargeback_out.json')); print(d.get('statusCode','?'))" 2>/dev/null)
-  if [ "$STATUS" = "200" ]; then
+  FUNC_ERR=$(grep -o 'Unhandled' /tmp/chargeback_meta.json 2>/dev/null || true)
+  if [ "$STATUS" = "200" ] && [ -z "$FUNC_ERR" ]; then
     pass "Lambda chargeback executed — statusCode=200"
   else
-    warn "Chargeback returned: $STATUS — CUR data needed for full report"
+    warn "Chargeback returned status=$STATUS — CUR data needed for full report"
   fi
 else
   fail "Lambda function '${PROJECT}-chargeback' invocation failed"

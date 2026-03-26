@@ -3,7 +3,7 @@
   Account  : 948378034607
   Region   : us-east-1
   Project  : finops
-  Run Time : 2026-03-27 00:25:43
+  Run Time : 2026-03-27 00:33:22
 ============================================================
 
 --- AWS Identity ---
@@ -17,6 +17,7 @@
 
 PASS | AWS CLI connected — Account: 948378034607
 --- Terraform State ---
+data.archive_file.chargeback_zip
 data.archive_file.cleanup_zip
 aws_athena_database.finops
 aws_athena_workgroup.finops
@@ -27,19 +28,27 @@ aws_budgets_budget.per_env["stage"]
 aws_ce_anomaly_monitor.service_monitor
 aws_ce_anomaly_subscription.alert_email
 aws_ce_anomaly_subscription.alert_sns
+aws_cloudwatch_event_rule.monthly_chargeback
 aws_cloudwatch_event_rule.nightly_cleanup
+aws_cloudwatch_event_target.chargeback_target
 aws_cloudwatch_event_target.cleanup_target
+aws_computeoptimizer_enrollment_status.finops
 aws_cur_report_definition.finops_cur
 aws_iam_role.cleanup_lambda
 aws_iam_role_policy.cleanup_lambda_policy
+aws_iam_role_policy.extra_lambda_policy
+aws_kms_alias.finops
+aws_kms_key.finops
+aws_lambda_function.chargeback
 aws_lambda_function.cleanup
 aws_lambda_permission.allow_eventbridge
+aws_lambda_permission.allow_eventbridge_chargeback
 aws_s3_bucket.cur_bucket
 aws_s3_bucket_policy.cur_bucket_policy
 aws_sns_topic.finops_alerts
 aws_sns_topic_subscription.email_alert
 
-PASS | Terraform state has 21 resources deployed
+PASS | Terraform state has 30 resources deployed
 --- CUR Report ---
 --------------------------------------------------------------------------
 |                        DescribeReportDefinitions                       |
@@ -60,47 +69,41 @@ PASS | CUR report 'finops-cur' exists — daily Parquet delivery active
 +-------------------+------------------------------------------------+
 
 PASS | S3 bucket 'finops-cur-reports-948378034607' exists and accessible
-WARN | S3 bucket policy not readable
+PASS | S3 bucket policy captured
 --- Athena Workgroup ---
 --------------------------------------------
 |               GetWorkGroup               |
 +------------+-----------------+-----------+
 | Encryption |      Name       |   State   |
 +------------+-----------------+-----------+
-|  None      |  finops-finops  |  ENABLED  |
+|  SSE_KMS   |  finops-finops  |  ENABLED  |
 +------------+-----------------+-----------+
 
 PASS | Athena workgroup 'finops-finops' exists with encryption
-PASS | Athena live query executed successfully (QueryId: e29678a9-0ed0-4f2c-acf8-8b0780a72f50)
---- Lambda Cleanup Invoke ---
----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-|                                                                                                                                                                                                            Invoke                                                                                                                                                                                                             |
-+-----------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-|  ExecutedVersion|  $LATEST                                                                                                                                                                                                                                                                                                                                                                                                    |
-|  LogResult      |  U1RBUlQgUmVxdWVzdElkOiAxNzJmNjExYi1mOWE5LTQxMzMtODM5MS1jYTMyZGVjZmViODMgVmVyc2lvbjogJExBVEVTVApFTkQgUmVxdWVzdElkOiAxNzJmNjExYi1mOWE5LTQxMzMtODM5MS1jYTMyZGVjZmViODMKUkVQT1JUIFJlcXVlc3RJZDogMTcyZjYxMWItZjlhOS00MTMzLTgzOTEtY2EzMmRlY2ZlYjgzCUR1cmF0aW9uOiAxMzU5LjQxIG1zCUJpbGxlZCBEdXJhdGlvbjogMjA5NyBtcwlNZW1vcnkgU2l6ZTogMTI4IE1CCU1heCBNZW1vcnkgVXNlZDogOTkgTUIJSW5pdCBEdXJhdGlvbjogNzM3LjI2IG1zCQo=   |
-|  StatusCode     |  200                                                                                                                                                                                                                                                                                                                                                                                                        |
-+-----------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-
-FAIL | Lambda cleanup returned unexpected status: 
+PASS | Athena live query executed successfully (QueryId: a0d5eb63-d376-4457-bd24-5f038645a61a)
+FAIL | Lambda cleanup error — statusCode= FunctionError=
 WARN | Lambda logs not yet available
 --- Lambda Chargeback Invoke ---
+----------------------------------------------------
+|                      Invoke                      |
++-----------------+-----------------+--------------+
+| ExecutedVersion |  FunctionError  | StatusCode   |
++-----------------+-----------------+--------------+
+|  $LATEST        |  Unhandled      |  200         |
++-----------------+-----------------+--------------+
 
-aws: [ERROR]: An error occurred (ResourceNotFoundException) when calling the Invoke operation: Function not found: arn:aws:lambda:us-east-1:948378034607:function:finops-chargeback
-
-Additional error details:
-Type: User
-
-FAIL | Lambda function 'finops-chargeback' invocation failed
+WARN | Chargeback returned:  — CUR data needed for full report
 --- EventBridge Rules ---
--------------------------------------------------------------
-|                         ListRules                         |
-+-------------------------+----------------------+----------+
-|          Name           |      Schedule        |  State   |
-+-------------------------+----------------------+----------+
-|  finops-nightly-cleanup |  cron(0 23 * * ? *)  |  ENABLED |
-+-------------------------+----------------------+----------+
+----------------------------------------------------------------
+|                           ListRules                          |
++----------------------------+----------------------+----------+
+|            Name            |      Schedule        |  State   |
++----------------------------+----------------------+----------+
+|  finops-monthly-chargeback |  cron(0 8 1 * ? *)   |  ENABLED |
+|  finops-nightly-cleanup    |  cron(0 23 * * ? *)  |  ENABLED |
++----------------------------+----------------------+----------+
 
-PASS | EventBridge rules captured — 1 rule(s) ENABLED
+PASS | EventBridge rules captured — 2 rule(s) ENABLED
 --- AWS Budgets ---
 -----------------------------------------------------
 |                  DescribeBudgets                  |
@@ -118,7 +121,7 @@ PASS | AWS Budgets captured — 4 budget(s) active (monthly + per-env)
 ------------------------------------------------------------------------------------------
 |                                   GetAnomalyMonitors                                   |
 +------+---------------------------------------------------------------------------------+
-|  Arn |  arn:aws:ce::948378034607:anomalymonitor/87f03a1d-85b6-49a1-ba41-c315fd9123e7   |
+|  Arn |  arn:aws:ce::948378034607:anomalymonitor/7c1e8363-b7b2-4e6f-afe2-ab2cd1ce0d11   |
 |  Name|  finops-service-monitor                                                         |
 |  Type|  CUSTOM                                                                         |
 +------+---------------------------------------------------------------------------------+
@@ -147,15 +150,18 @@ PASS | SNS topic found: arn:aws:sns:us-east-1:948378034607:finops-finops-alerts
 +----------+-------------------------------------------------------------------------------------------------+
 
 PASS | SNS subscription confirmed and active
-PASS | Live SNS test alert sent — MessageId: c2552118-35d0-5112-b2ce-4327b67889e8 (check your email)
+PASS | Live SNS test alert sent — MessageId: 6c5d18aa-5323-53a2-83f5-7a95d657278a (check your email)
 --- KMS Key ---
+---------------------------------------------------------
+|                      DescribeKey                      |
++--------------+----------------------------------------+
+|  Description |  FinOps encryption key                 |
+|  KeyId       |  8dcf4d49-f960-44e8-be69-eea5d2d7faa1  |
+|  Rotation    |  None                                  |
+|  State       |  Enabled                               |
++--------------+----------------------------------------+
 
-aws: [ERROR]: An error occurred (NotFoundException) when calling the DescribeKey operation: Alias arn:aws:kms:us-east-1:948378034607:alias/finops-finops is not found.
-
-Additional error details:
-message: Alias arn:aws:kms:us-east-1:948378034607:alias/finops-finops is not found.
-
-WARN | KMS key alias not found — check key was created
+PASS | KMS CMK exists with key rotation — SNS/Athena encrypted at rest
 --- Tag Policy ---
 -----------------------------------------------------
 |                   ListPolicies                    |
@@ -176,26 +182,17 @@ PASS | Tag Policy 'FinOps-Tag-Policy' exists and enforced at org level
 +-------------+---------------------------+
 
 PASS | SCP 'FinOps-Cost-Control-SCP' exists — cost guardrails active
---- Compute Optimizer ---
---------------------------------------
-|         GetEnrollmentStatus        |
-+-------------------------+----------+
-| MemberAccountsEnrolled  | Status   |
-+-------------------------+----------+
-|  None                   |  None    |
-+-------------------------+----------+
-
-WARN | Compute Optimizer status not Active — check enrollment
+PASS | Compute Optimizer enrolled — rightsizing recommendations active
 
 ============================================================
   TEST RESULTS SUMMARY
-  Run Time : 2026-03-27 00:25:43
+  Run Time : 2026-03-27 00:33:22
   Account  : 948378034607
 ------------------------------------------------------------
   Total    : 21
-  PASS     : 15
-  FAIL     : 2
-  WARN     : 4
+  PASS     : 18
+  FAIL     : 1
+  WARN     : 2
 ============================================================
 
 Evidence Files:
@@ -213,6 +210,7 @@ Evidence Files:
 06c_lambda_cleanup_logs.txt
 07_lambda_chargeback_response.txt
 07_lambda_cleanup_response.json
+07b_lambda_chargeback_output.json
 08_eventbridge_rules.txt
 08_lambda_cleanup_logs.txt
 09_budgets.txt
