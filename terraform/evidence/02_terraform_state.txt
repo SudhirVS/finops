@@ -1,0 +1,789 @@
+# data.archive_file.cleanup_zip:
+data "archive_file" "cleanup_zip" {
+    id                  = "5098b3ef0f8d45a4eadef0012c394f4ab07a4112"
+    output_base64sha256 = "m1+L+M6d4RdvwrLJ89tw8BWt4vUfq5/ulPoDDq+rA9U="
+    output_base64sha512 = "8VUcbD5vdqzRmhNe4Q2k85xliDW6F167CNJJ4HJdI1MXPBI0Ast7CUu9IB8TBcWN7R7YTkreBltLV1iVkhy1hQ=="
+    output_md5          = "5e0bf7d7f5e2f4b9cb7ef8abf248e45b"
+    output_path         = "./../lambda/cleanup.zip"
+    output_sha          = "5098b3ef0f8d45a4eadef0012c394f4ab07a4112"
+    output_sha256       = "9b5f8bf8ce9de1176fc2b2c9f3db70f015ade2f51fab9fee94fa030eafab03d5"
+    output_sha512       = "f1551c6c3e6f76acd19a135ee10da4f39c658835ba175ebb08d249e0725d2353173c123402cb7b094bbd201f1305c58ded1ed84e4ade065b4b575895921cb585"
+    output_size         = 1832
+    source_file         = "./../lambda/cleanup.py"
+    type                = "zip"
+}
+
+# aws_athena_database.finops:
+resource "aws_athena_database" "finops" {
+    bucket        = "finops-cur-reports-948378034607"
+    comment       = [90mnull[0m[0m
+    force_destroy = false
+    id            = "finops_finops"
+    name          = "finops_finops"
+    properties    = {}
+}
+
+# aws_athena_workgroup.finops:
+resource "aws_athena_workgroup" "finops" {
+    arn           = "arn:aws:athena:us-east-1:948378034607:workgroup/finops-finops"
+    description   = [90mnull[0m[0m
+    force_destroy = false
+    id            = "finops-finops"
+    name          = "finops-finops"
+    state         = "ENABLED"
+    tags          = {
+        "ManagedBy" = "terraform"
+        "Owner"     = "finops-team"
+        "Project"   = "finops"
+    }
+    tags_all      = {
+        "ManagedBy" = "terraform"
+        "Owner"     = "finops-team"
+        "Project"   = "finops"
+    }
+
+    configuration {
+        bytes_scanned_cutoff_per_query     = 0
+        enforce_workgroup_configuration    = true
+        execution_role                     = [90mnull[0m[0m
+        publish_cloudwatch_metrics_enabled = true
+        requester_pays_enabled             = false
+
+        engine_version {
+            effective_engine_version = "Athena engine version 3"
+            selected_engine_version  = "AUTO"
+        }
+
+        result_configuration {
+            expected_bucket_owner = [90mnull[0m[0m
+            output_location       = "s3://finops-cur-reports-948378034607/athena-results/"
+        }
+    }
+}
+
+# aws_budgets_budget.monthly:
+resource "aws_budgets_budget" "monthly" {
+    account_id        = "948378034607"
+    arn               = "arn:aws:budgets::948378034607:budget/finops-monthly-budget"
+    budget_type       = "COST"
+    id                = "948378034607:finops-monthly-budget"
+    limit_amount      = "1000.0"
+    limit_unit        = "USD"
+    name              = "finops-monthly-budget"
+    name_prefix       = [90mnull[0m[0m
+    tags              = {}
+    tags_all          = {}
+    time_period_end   = "2087-06-15_00:00"
+    time_period_start = "2026-03-01_00:00"
+    time_unit         = "MONTHLY"
+
+    cost_types {
+        include_credit             = true
+        include_discount           = true
+        include_other_subscription = true
+        include_recurring          = true
+        include_refund             = true
+        include_subscription       = true
+        include_support            = true
+        include_tax                = true
+        include_upfront            = true
+        use_amortized              = false
+        use_blended                = false
+    }
+
+    notification {
+        comparison_operator        = "GREATER_THAN"
+        notification_type          = "ACTUAL"
+        subscriber_email_addresses = []
+        subscriber_sns_topic_arns  = [
+            "arn:aws:sns:us-east-1:948378034607:finops-finops-alerts",
+        ]
+        threshold                  = 100
+        threshold_type             = "PERCENTAGE"
+    }
+    notification {
+        comparison_operator        = "GREATER_THAN"
+        notification_type          = "ACTUAL"
+        subscriber_email_addresses = []
+        subscriber_sns_topic_arns  = [
+            "arn:aws:sns:us-east-1:948378034607:finops-finops-alerts",
+        ]
+        threshold                  = 80
+        threshold_type             = "PERCENTAGE"
+    }
+    notification {
+        comparison_operator        = "GREATER_THAN"
+        notification_type          = "FORECASTED"
+        subscriber_email_addresses = []
+        subscriber_sns_topic_arns  = [
+            "arn:aws:sns:us-east-1:948378034607:finops-finops-alerts",
+        ]
+        threshold                  = 50
+        threshold_type             = "PERCENTAGE"
+    }
+}
+
+# aws_budgets_budget.per_env["dev"]:
+resource "aws_budgets_budget" "per_env" {
+    account_id        = "948378034607"
+    arn               = "arn:aws:budgets::948378034607:budget/finops-dev-budget"
+    budget_type       = "COST"
+    id                = "948378034607:finops-dev-budget"
+    limit_amount      = "200.0"
+    limit_unit        = "USD"
+    name              = "finops-dev-budget"
+    name_prefix       = [90mnull[0m[0m
+    tags              = {}
+    tags_all          = {}
+    time_period_end   = "2087-06-15_00:00"
+    time_period_start = "2026-03-01_00:00"
+    time_unit         = "MONTHLY"
+
+    cost_filter {
+        name   = "TagKeyValue"
+        values = [
+            "user:Environment${each.key}",
+        ]
+    }
+
+    cost_types {
+        include_credit             = true
+        include_discount           = true
+        include_other_subscription = true
+        include_recurring          = true
+        include_refund             = true
+        include_subscription       = true
+        include_support            = true
+        include_tax                = true
+        include_upfront            = true
+        use_amortized              = false
+        use_blended                = false
+    }
+
+    notification {
+        comparison_operator        = "GREATER_THAN"
+        notification_type          = "ACTUAL"
+        subscriber_email_addresses = []
+        subscriber_sns_topic_arns  = [
+            "arn:aws:sns:us-east-1:948378034607:finops-finops-alerts",
+        ]
+        threshold                  = 80
+        threshold_type             = "PERCENTAGE"
+    }
+}
+
+# aws_budgets_budget.per_env["prod"]:
+resource "aws_budgets_budget" "per_env" {
+    account_id        = "948378034607"
+    arn               = "arn:aws:budgets::948378034607:budget/finops-prod-budget"
+    budget_type       = "COST"
+    id                = "948378034607:finops-prod-budget"
+    limit_amount      = "500.0"
+    limit_unit        = "USD"
+    name              = "finops-prod-budget"
+    name_prefix       = [90mnull[0m[0m
+    tags              = {}
+    tags_all          = {}
+    time_period_end   = "2087-06-15_00:00"
+    time_period_start = "2026-03-01_00:00"
+    time_unit         = "MONTHLY"
+
+    cost_filter {
+        name   = "TagKeyValue"
+        values = [
+            "user:Environment${each.key}",
+        ]
+    }
+
+    cost_types {
+        include_credit             = true
+        include_discount           = true
+        include_other_subscription = true
+        include_recurring          = true
+        include_refund             = true
+        include_subscription       = true
+        include_support            = true
+        include_tax                = true
+        include_upfront            = true
+        use_amortized              = false
+        use_blended                = false
+    }
+
+    notification {
+        comparison_operator        = "GREATER_THAN"
+        notification_type          = "ACTUAL"
+        subscriber_email_addresses = []
+        subscriber_sns_topic_arns  = [
+            "arn:aws:sns:us-east-1:948378034607:finops-finops-alerts",
+        ]
+        threshold                  = 80
+        threshold_type             = "PERCENTAGE"
+    }
+}
+
+# aws_budgets_budget.per_env["stage"]:
+resource "aws_budgets_budget" "per_env" {
+    account_id        = "948378034607"
+    arn               = "arn:aws:budgets::948378034607:budget/finops-stage-budget"
+    budget_type       = "COST"
+    id                = "948378034607:finops-stage-budget"
+    limit_amount      = "300.0"
+    limit_unit        = "USD"
+    name              = "finops-stage-budget"
+    name_prefix       = [90mnull[0m[0m
+    tags              = {}
+    tags_all          = {}
+    time_period_end   = "2087-06-15_00:00"
+    time_period_start = "2026-03-01_00:00"
+    time_unit         = "MONTHLY"
+
+    cost_filter {
+        name   = "TagKeyValue"
+        values = [
+            "user:Environment${each.key}",
+        ]
+    }
+
+    cost_types {
+        include_credit             = true
+        include_discount           = true
+        include_other_subscription = true
+        include_recurring          = true
+        include_refund             = true
+        include_subscription       = true
+        include_support            = true
+        include_tax                = true
+        include_upfront            = true
+        use_amortized              = false
+        use_blended                = false
+    }
+
+    notification {
+        comparison_operator        = "GREATER_THAN"
+        notification_type          = "ACTUAL"
+        subscriber_email_addresses = []
+        subscriber_sns_topic_arns  = [
+            "arn:aws:sns:us-east-1:948378034607:finops-finops-alerts",
+        ]
+        threshold                  = 80
+        threshold_type             = "PERCENTAGE"
+    }
+}
+
+# aws_ce_anomaly_monitor.service_monitor:
+resource "aws_ce_anomaly_monitor" "service_monitor" {
+    arn                   = "arn:aws:ce::948378034607:anomalymonitor/87f03a1d-85b6-49a1-ba41-c315fd9123e7"
+    id                    = "arn:aws:ce::948378034607:anomalymonitor/87f03a1d-85b6-49a1-ba41-c315fd9123e7"
+    monitor_dimension     = [90mnull[0m[0m
+    monitor_specification = jsonencode(
+        {
+            And            = [90mnull[0m[0m
+            CostCategories = [90mnull[0m[0m
+            Dimensions     = [90mnull[0m[0m
+            Not            = [90mnull[0m[0m
+            Or             = [90mnull[0m[0m
+            Tags           = {
+                Key          = "user:Project"
+                MatchOptions = [
+                    "EQUALS",
+                ]
+                Values       = [
+                    "finops",
+                ]
+            }
+        }
+    )
+    monitor_type          = "CUSTOM"
+    name                  = "finops-service-monitor"
+    tags_all              = {}
+}
+
+# aws_ce_anomaly_subscription.alert_email:
+resource "aws_ce_anomaly_subscription" "alert_email" {
+    account_id       = "948378034607"
+    arn              = "arn:aws:ce::948378034607:anomalysubscription/bfcba9c9-8d1f-4912-84e8-0e614820f6b1"
+    frequency        = "DAILY"
+    id               = "arn:aws:ce::948378034607:anomalysubscription/bfcba9c9-8d1f-4912-84e8-0e614820f6b1"
+    monitor_arn_list = [
+        "arn:aws:ce::948378034607:anomalymonitor/87f03a1d-85b6-49a1-ba41-c315fd9123e7",
+    ]
+    name             = "finops-anomaly-alert-email"
+    tags             = {}
+    tags_all         = {}
+
+    subscriber {
+        address = "sdhpaithankar@gmail.com"
+        type    = "EMAIL"
+    }
+
+    threshold_expression {
+        dimension {
+            key           = "ANOMALY_TOTAL_IMPACT_ABSOLUTE"
+            match_options = [
+                "GREATER_THAN_OR_EQUAL",
+            ]
+            values        = [
+                "20",
+            ]
+        }
+    }
+}
+
+# aws_ce_anomaly_subscription.alert_sns:
+resource "aws_ce_anomaly_subscription" "alert_sns" {
+    account_id       = "948378034607"
+    arn              = "arn:aws:ce::948378034607:anomalysubscription/68a8a58a-fb33-49bb-9467-36f6410d932e"
+    frequency        = "IMMEDIATE"
+    id               = "arn:aws:ce::948378034607:anomalysubscription/68a8a58a-fb33-49bb-9467-36f6410d932e"
+    monitor_arn_list = [
+        "arn:aws:ce::948378034607:anomalymonitor/87f03a1d-85b6-49a1-ba41-c315fd9123e7",
+    ]
+    name             = "finops-anomaly-alert-sns"
+    tags             = {}
+    tags_all         = {}
+
+    subscriber {
+        address = "arn:aws:sns:us-east-1:948378034607:finops-finops-alerts"
+        type    = "SNS"
+    }
+
+    threshold_expression {
+        dimension {
+            key           = "ANOMALY_TOTAL_IMPACT_ABSOLUTE"
+            match_options = [
+                "GREATER_THAN_OR_EQUAL",
+            ]
+            values        = [
+                "20",
+            ]
+        }
+    }
+}
+
+# aws_cloudwatch_event_rule.nightly_cleanup:
+resource "aws_cloudwatch_event_rule" "nightly_cleanup" {
+    arn                 = "arn:aws:events:us-east-1:948378034607:rule/finops-nightly-cleanup"
+    description         = [90mnull[0m[0m
+    event_bus_name      = "default"
+    force_destroy       = false
+    id                  = "finops-nightly-cleanup"
+    is_enabled          = true
+    name                = "finops-nightly-cleanup"
+    name_prefix         = [90mnull[0m[0m
+    role_arn            = [90mnull[0m[0m
+    schedule_expression = "cron(0 23 * * ? *)"
+    state               = "ENABLED"
+    tags                = {}
+    tags_all            = {}
+}
+
+# aws_cloudwatch_event_target.cleanup_target:
+resource "aws_cloudwatch_event_target" "cleanup_target" {
+    arn            = "arn:aws:lambda:us-east-1:948378034607:function:finops-cleanup"
+    event_bus_name = "default"
+    force_destroy  = false
+    id             = "finops-nightly-cleanup-CleanupLambda"
+    input          = [90mnull[0m[0m
+    input_path     = [90mnull[0m[0m
+    role_arn       = [90mnull[0m[0m
+    rule           = "finops-nightly-cleanup"
+    target_id      = "CleanupLambda"
+}
+
+# aws_cur_report_definition.finops_cur:
+resource "aws_cur_report_definition" "finops_cur" {
+    additional_artifacts       = []
+    additional_schema_elements = [
+        "RESOURCES",
+        "SPLIT_COST_ALLOCATION_DATA",
+    ]
+    arn                        = "arn:aws:cur:us-east-1:948378034607:definition/finops-cur"
+    compression                = "Parquet"
+    format                     = "Parquet"
+    id                         = "finops-cur"
+    refresh_closed_reports     = true
+    report_name                = "finops-cur"
+    report_versioning          = "OVERWRITE_REPORT"
+    s3_bucket                  = "finops-cur-reports-948378034607"
+    s3_prefix                  = "cur"
+    s3_region                  = "us-east-1"
+    tags                       = {}
+    tags_all                   = {}
+    time_unit                  = "DAILY"
+}
+
+# aws_iam_role.cleanup_lambda:
+resource "aws_iam_role" "cleanup_lambda" {
+    arn                   = "arn:aws:iam::948378034607:role/finops-cleanup-lambda-role"
+    assume_role_policy    = jsonencode(
+        {
+            Statement = [
+                {
+                    Action    = "sts:AssumeRole"
+                    Effect    = "Allow"
+                    Principal = {
+                        Service = "lambda.amazonaws.com"
+                    }
+                },
+            ]
+            Version   = "2012-10-17"
+        }
+    )
+    create_date           = "2026-03-26T17:34:04Z"
+    description           = [90mnull[0m[0m
+    force_detach_policies = false
+    id                    = "finops-cleanup-lambda-role"
+    managed_policy_arns   = []
+    max_session_duration  = 3600
+    name                  = "finops-cleanup-lambda-role"
+    name_prefix           = [90mnull[0m[0m
+    path                  = "/"
+    permissions_boundary  = [90mnull[0m[0m
+    tags                  = {}
+    tags_all              = {}
+    unique_id             = "AROA5ZT54MGXSAVJ24KRZ"
+
+    inline_policy {
+        name   = "terraform-20260326173405162900000001"
+        policy = jsonencode(
+            {
+                Statement = [
+                    {
+                        Action   = [
+                            "ec2:DescribeInstances",
+                            "ec2:StopInstances",
+                            "ec2:DescribeVolumes",
+                            "ec2:DeleteVolume",
+                            "ec2:DescribeSnapshots",
+                            "ec2:DeleteSnapshot",
+                            "elasticloadbalancing:DescribeLoadBalancers",
+                            "elasticloadbalancing:DescribeTargetGroups",
+                            "elasticloadbalancing:DeleteLoadBalancer",
+                            "sns:Publish",
+                            "logs:CreateLogGroup",
+                            "logs:CreateLogStream",
+                            "logs:PutLogEvents",
+                        ]
+                        Effect   = "Allow"
+                        Resource = "*"
+                    },
+                ]
+                Version   = "2012-10-17"
+            }
+        )
+    }
+}
+
+# aws_iam_role_policy.cleanup_lambda_policy:
+resource "aws_iam_role_policy" "cleanup_lambda_policy" {
+    id          = "finops-cleanup-lambda-role:terraform-20260326173405162900000001"
+    name        = "terraform-20260326173405162900000001"
+    name_prefix = "terraform-"
+    policy      = jsonencode(
+        {
+            Statement = [
+                {
+                    Action   = [
+                        "ec2:DescribeInstances",
+                        "ec2:StopInstances",
+                        "ec2:DescribeVolumes",
+                        "ec2:DeleteVolume",
+                        "ec2:DescribeSnapshots",
+                        "ec2:DeleteSnapshot",
+                        "ec2:DescribeImages",
+                        "elasticloadbalancing:DescribeLoadBalancers",
+                        "elasticloadbalancing:DescribeTargetGroups",
+                        "elasticloadbalancing:DeleteLoadBalancer",
+                        "sns:Publish",
+                        "logs:CreateLogGroup",
+                        "logs:CreateLogStream",
+                        "logs:PutLogEvents",
+                    ]
+                    Effect   = "Allow"
+                    Resource = "*"
+                },
+            ]
+            Version   = "2012-10-17"
+        }
+    )
+    role        = "finops-cleanup-lambda-role"
+}
+
+# aws_lambda_function.cleanup:
+resource "aws_lambda_function" "cleanup" {
+    architectures                  = [
+        "x86_64",
+    ]
+    arn                            = "arn:aws:lambda:us-east-1:948378034607:function:finops-cleanup"
+    code_sha256                    = "m1+L+M6d4RdvwrLJ89tw8BWt4vUfq5/ulPoDDq+rA9U="
+    code_signing_config_arn        = [90mnull[0m[0m
+    description                    = [90mnull[0m[0m
+    filename                       = "./../lambda/cleanup.zip"
+    function_name                  = "finops-cleanup"
+    handler                        = "cleanup.handler"
+    id                             = "finops-cleanup"
+    image_uri                      = [90mnull[0m[0m
+    invoke_arn                     = "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:948378034607:function:finops-cleanup/invocations"
+    kms_key_arn                    = [90mnull[0m[0m
+    last_modified                  = "2026-03-26T17:34:16.564+0000"
+    layers                         = []
+    memory_size                    = 128
+    package_type                   = "Zip"
+    publish                        = false
+    qualified_arn                  = "arn:aws:lambda:us-east-1:948378034607:function:finops-cleanup:$LATEST"
+    qualified_invoke_arn           = "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:948378034607:function:finops-cleanup:$LATEST/invocations"
+    reserved_concurrent_executions = -1
+    role                           = "arn:aws:iam::948378034607:role/finops-cleanup-lambda-role"
+    runtime                        = "python3.12"
+    signing_job_arn                = [90mnull[0m[0m
+    signing_profile_version_arn    = [90mnull[0m[0m
+    skip_destroy                   = false
+    source_code_hash               = "m1+L+M6d4RdvwrLJ89tw8BWt4vUfq5/ulPoDDq+rA9U="
+    source_code_size               = 1832
+    tags                           = {
+        "ManagedBy" = "terraform"
+        "Owner"     = "finops-team"
+        "Project"   = "finops"
+    }
+    tags_all                       = {
+        "ManagedBy" = "terraform"
+        "Owner"     = "finops-team"
+        "Project"   = "finops"
+    }
+    timeout                        = 300
+    version                        = "$LATEST"
+
+    environment {
+        variables = {
+            "DRY_RUN"          = "false"
+            "IDLE_CPU_PERCENT" = "5"
+            "SNS_TOPIC_ARN"    = "arn:aws:sns:us-east-1:948378034607:finops-finops-alerts"
+        }
+    }
+
+    ephemeral_storage {
+        size = 512
+    }
+
+    logging_config {
+        application_log_level = [90mnull[0m[0m
+        log_format            = "Text"
+        log_group             = "/aws/lambda/finops-cleanup"
+        system_log_level      = [90mnull[0m[0m
+    }
+
+    tracing_config {
+        mode = "PassThrough"
+    }
+}
+
+# aws_lambda_permission.allow_eventbridge:
+resource "aws_lambda_permission" "allow_eventbridge" {
+    action              = "lambda:InvokeFunction"
+    function_name       = "finops-cleanup"
+    id                  = "AllowEventBridge"
+    principal           = "events.amazonaws.com"
+    qualifier           = [90mnull[0m[0m
+    source_arn          = "arn:aws:events:us-east-1:948378034607:rule/finops-nightly-cleanup"
+    statement_id        = "AllowEventBridge"
+    statement_id_prefix = [90mnull[0m[0m
+}
+
+# aws_s3_bucket.cur_bucket:
+resource "aws_s3_bucket" "cur_bucket" {
+    acceleration_status         = [90mnull[0m[0m
+    arn                         = "arn:aws:s3:::finops-cur-reports-948378034607"
+    bucket                      = "finops-cur-reports-948378034607"
+    bucket_domain_name          = "finops-cur-reports-948378034607.s3.amazonaws.com"
+    bucket_prefix               = [90mnull[0m[0m
+    bucket_regional_domain_name = "finops-cur-reports-948378034607.s3.us-east-1.amazonaws.com"
+    force_destroy               = true
+    hosted_zone_id              = "Z3AQBSTGFYJSTF"
+    id                          = "finops-cur-reports-948378034607"
+    object_lock_enabled         = false
+    policy                      = jsonencode(
+        {
+            Statement = [
+                {
+                    Action    = [
+                        "s3:GetBucketAcl",
+                        "s3:GetBucketPolicy",
+                        "s3:PutObject",
+                    ]
+                    Effect    = "Allow"
+                    Principal = {
+                        Service = "billingreports.amazonaws.com"
+                    }
+                    Resource  = [
+                        "arn:aws:s3:::finops-cur-reports-948378034607",
+                        "arn:aws:s3:::finops-cur-reports-948378034607/*",
+                    ]
+                    Sid       = "AllowCURDelivery"
+                },
+            ]
+            Version   = "2012-10-17"
+        }
+    )
+    region                      = "us-east-1"
+    request_payer               = "BucketOwner"
+    tags                        = {
+        "ManagedBy" = "terraform"
+        "Owner"     = "finops-team"
+        "Project"   = "finops"
+    }
+    tags_all                    = {
+        "ManagedBy" = "terraform"
+        "Owner"     = "finops-team"
+        "Project"   = "finops"
+    }
+
+    grant {
+        id          = "9b0d3f1a58135095ec24a0461fdba5fbe079dc32f6159aaefe869099137df72b"
+        permissions = [
+            "FULL_CONTROL",
+        ]
+        type        = "CanonicalUser"
+        uri         = [90mnull[0m[0m
+    }
+
+    server_side_encryption_configuration {
+        rule {
+            bucket_key_enabled = false
+
+            apply_server_side_encryption_by_default {
+                kms_master_key_id = [90mnull[0m[0m
+                sse_algorithm     = "AES256"
+            }
+        }
+    }
+
+    versioning {
+        enabled    = false
+        mfa_delete = false
+    }
+}
+
+# aws_s3_bucket_policy.cur_bucket_policy:
+resource "aws_s3_bucket_policy" "cur_bucket_policy" {
+    bucket = "finops-cur-reports-948378034607"
+    id     = "finops-cur-reports-948378034607"
+    policy = jsonencode(
+        {
+            Statement = [
+                {
+                    Action    = [
+                        "s3:GetBucketAcl",
+                        "s3:GetBucketPolicy",
+                        "s3:PutObject",
+                    ]
+                    Effect    = "Allow"
+                    Principal = {
+                        Service = "billingreports.amazonaws.com"
+                    }
+                    Resource  = [
+                        "arn:aws:s3:::finops-cur-reports-948378034607",
+                        "arn:aws:s3:::finops-cur-reports-948378034607/*",
+                    ]
+                    Sid       = "AllowCURDelivery"
+                },
+            ]
+            Version   = "2012-10-17"
+        }
+    )
+}
+
+# aws_sns_topic.finops_alerts:
+resource "aws_sns_topic" "finops_alerts" {
+    application_failure_feedback_role_arn    = [90mnull[0m[0m
+    application_success_feedback_role_arn    = [90mnull[0m[0m
+    application_success_feedback_sample_rate = 0
+    archive_policy                           = [90mnull[0m[0m
+    arn                                      = "arn:aws:sns:us-east-1:948378034607:finops-finops-alerts"
+    beginning_archive_time                   = [90mnull[0m[0m
+    content_based_deduplication              = false
+    delivery_policy                          = [90mnull[0m[0m
+    display_name                             = [90mnull[0m[0m
+    fifo_throughput_scope                    = [90mnull[0m[0m
+    fifo_topic                               = false
+    firehose_failure_feedback_role_arn       = [90mnull[0m[0m
+    firehose_success_feedback_role_arn       = [90mnull[0m[0m
+    firehose_success_feedback_sample_rate    = 0
+    http_failure_feedback_role_arn           = [90mnull[0m[0m
+    http_success_feedback_role_arn           = [90mnull[0m[0m
+    http_success_feedback_sample_rate        = 0
+    id                                       = "arn:aws:sns:us-east-1:948378034607:finops-finops-alerts"
+    kms_master_key_id                        = [90mnull[0m[0m
+    lambda_failure_feedback_role_arn         = [90mnull[0m[0m
+    lambda_success_feedback_role_arn         = [90mnull[0m[0m
+    lambda_success_feedback_sample_rate      = 0
+    name                                     = "finops-finops-alerts"
+    name_prefix                              = [90mnull[0m[0m
+    owner                                    = "948378034607"
+    policy                                   = jsonencode(
+        {
+            Id        = "__default_policy_ID"
+            Statement = [
+                {
+                    Action    = [
+                        "SNS:GetTopicAttributes",
+                        "SNS:SetTopicAttributes",
+                        "SNS:AddPermission",
+                        "SNS:RemovePermission",
+                        "SNS:DeleteTopic",
+                        "SNS:Subscribe",
+                        "SNS:ListSubscriptionsByTopic",
+                        "SNS:Publish",
+                    ]
+                    Condition = {
+                        StringEquals = {
+                            "AWS:SourceOwner" = "948378034607"
+                        }
+                    }
+                    Effect    = "Allow"
+                    Principal = {
+                        AWS = "*"
+                    }
+                    Resource  = "arn:aws:sns:us-east-1:948378034607:finops-finops-alerts"
+                    Sid       = "__default_statement_ID"
+                },
+            ]
+            Version   = "2008-10-17"
+        }
+    )
+    signature_version                        = 0
+    sqs_failure_feedback_role_arn            = [90mnull[0m[0m
+    sqs_success_feedback_role_arn            = [90mnull[0m[0m
+    sqs_success_feedback_sample_rate         = 0
+    tags                                     = {
+        "ManagedBy" = "terraform"
+        "Owner"     = "finops-team"
+        "Project"   = "finops"
+    }
+    tags_all                                 = {
+        "ManagedBy" = "terraform"
+        "Owner"     = "finops-team"
+        "Project"   = "finops"
+    }
+    tracing_config                           = [90mnull[0m[0m
+}
+
+# aws_sns_topic_subscription.email_alert:
+resource "aws_sns_topic_subscription" "email_alert" {
+    arn                             = "arn:aws:sns:us-east-1:948378034607:finops-finops-alerts:58ca3902-2f87-426b-9359-1e935885cf67"
+    confirmation_timeout_in_minutes = 1
+    confirmation_was_authenticated  = false
+    delivery_policy                 = [90mnull[0m[0m
+    endpoint                        = "sdhpaithankar@gmail.com"
+    endpoint_auto_confirms          = false
+    filter_policy                   = [90mnull[0m[0m
+    filter_policy_scope             = [90mnull[0m[0m
+    id                              = "arn:aws:sns:us-east-1:948378034607:finops-finops-alerts:58ca3902-2f87-426b-9359-1e935885cf67"
+    owner_id                        = "948378034607"
+    pending_confirmation            = false
+    protocol                        = "email"
+    raw_message_delivery            = false
+    redrive_policy                  = [90mnull[0m[0m
+    replay_policy                   = [90mnull[0m[0m
+    subscription_role_arn           = [90mnull[0m[0m
+    topic_arn                       = "arn:aws:sns:us-east-1:948378034607:finops-finops-alerts"
+}
