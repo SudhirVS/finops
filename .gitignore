@@ -1,5 +1,5 @@
 # Terraform — providers & plugins (large binaries)
-.terraform/
+.terraform/*
 .terraform.lock.hcl
 
 # Terraform state (contains sensitive data)
