@@ -3,7 +3,7 @@
   Account  : 948378034607
   Region   : us-east-1
   Project  : finops
-  Run Time : 2026-03-27 00:33:22
+  Run Time : 2026-03-27 00:38:37
 ============================================================
 
 --- AWS Identity ---
@@ -80,19 +80,10 @@ PASS | S3 bucket policy captured
 +------------+-----------------+-----------+
 
 PASS | Athena workgroup 'finops-finops' exists with encryption
-PASS | Athena live query executed successfully (QueryId: a0d5eb63-d376-4457-bd24-5f038645a61a)
+PASS | Athena live query executed successfully (QueryId: 46e1b391-3171-456a-9578-03b92a8d9d2c)
 FAIL | Lambda cleanup error — statusCode= FunctionError=
 WARN | Lambda logs not yet available
---- Lambda Chargeback Invoke ---
-----------------------------------------------------
-|                      Invoke                      |
-+-----------------+-----------------+--------------+
-| ExecutedVersion |  FunctionError  | StatusCode   |
-+-----------------+-----------------+--------------+
-|  $LATEST        |  Unhandled      |  200         |
-+-----------------+-----------------+--------------+
-
-WARN | Chargeback returned:  — CUR data needed for full report
+WARN | Chargeback returned status= — CUR data needed for full report
 --- EventBridge Rules ---
 ----------------------------------------------------------------
 |                           ListRules                          |
@@ -121,7 +112,7 @@ PASS | AWS Budgets captured — 4 budget(s) active (monthly + per-env)
 ------------------------------------------------------------------------------------------
 |                                   GetAnomalyMonitors                                   |
 +------+---------------------------------------------------------------------------------+
-|  Arn |  arn:aws:ce::948378034607:anomalymonitor/7c1e8363-b7b2-4e6f-afe2-ab2cd1ce0d11   |
+|  Arn |  arn:aws:ce::948378034607:anomalymonitor/8e62c3fb-7110-4442-8a47-2d4f925a2216   |
 |  Name|  finops-service-monitor                                                         |
 |  Type|  CUSTOM                                                                         |
 +------+---------------------------------------------------------------------------------+
@@ -150,7 +141,7 @@ PASS | SNS topic found: arn:aws:sns:us-east-1:948378034607:finops-finops-alerts
 +----------+-------------------------------------------------------------------------------------------------+
 
 PASS | SNS subscription confirmed and active
-PASS | Live SNS test alert sent — MessageId: 6c5d18aa-5323-53a2-83f5-7a95d657278a (check your email)
+PASS | Live SNS test alert sent — MessageId: 17f4040a-1c9e-579a-bcdb-66359a2ff734 (check your email)
 --- KMS Key ---
 ---------------------------------------------------------
 |                      DescribeKey                      |
@@ -186,7 +177,7 @@ PASS | Compute Optimizer enrolled — rightsizing recommendations active
 
 ============================================================
   TEST RESULTS SUMMARY
-  Run Time : 2026-03-27 00:33:22
+  Run Time : 2026-03-27 00:38:37
   Account  : 948378034607
 ------------------------------------------------------------
   Total    : 21

@@ -5,3 +5,5 @@
 +-----------------+-----------------+--------------+
 |  $LATEST        |  Unhandled      |  200         |
 +-----------------+-----------------+--------------+
+--- Chargeback Response Payload ---
+{"errorMessage": "Athena query FAILED", "errorType": "RuntimeError", "requestId": "7005f2ac-bc74-493a-bb20-a4c4cbc05411", "stackTrace": ["  File \"/var/task/chargeback.py\", line 75, in handler\n    rows   = _run_query(CHARGEBACK_QUERY)\n", "  File \"/var/task/chargeback.py\", line 40, in _run_query\n    raise RuntimeError(f\"Athena query {state}\")\n"]}
