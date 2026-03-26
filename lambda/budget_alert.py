@@ -1,13 +1,25 @@
-import json, os, urllib.request
+import json, os, re, boto3
+from urllib.parse import urlparse
 
 SLACK_WEBHOOK = os.environ.get("SLACK_WEBHOOK_URL", "")
+_sns = boto3.client("sns")
+
+def _sanitize(text: str) -> str:
+    """Strip non-printable and HTML-unsafe characters from alert text."""
+    text = re.sub(r"[<>&\"']", "", text)   # remove HTML special chars
+    text = re.sub(r"[^\x20-\x7E\n]", "", text)  # keep printable ASCII + newlines
+    return text[:2000]  # hard cap to prevent oversized payloads
 
 def _post_slack(text: str):
-    if not SLACK_WEBHOOK:
+    topic_arn = os.environ.get("SNS_TOPIC_ARN", "")
+    if not topic_arn:
+        print(f"ALERT: {_sanitize(text)}")
         return
-    data = json.dumps({"text": text}).encode()
-    req  = urllib.request.Request(SLACK_WEBHOOK, data=data, headers={"Content-Type": "application/json"})
-    urllib.request.urlopen(req, timeout=5)
+    _sns.publish(
+        TopicArn=topic_arn,
+        Message=_sanitize(text),
+        Subject="FinOps Alert"
+    )
 
 def _format_budget(msg: dict) -> str:
     return (

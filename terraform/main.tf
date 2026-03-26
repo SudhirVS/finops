@@ -9,6 +9,48 @@ provider "aws" {
 }
 
 # ─────────────────────────────────────────────
+# KMS KEY — encrypts SNS, Athena, S3
+# ─────────────────────────────────────────────
+
+resource "aws_kms_key" "finops" {
+  description             = "FinOps encryption key"
+  deletion_window_in_days = 7
+  enable_key_rotation     = true
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid       = "AllowAccountRoot"
+        Effect    = "Allow"
+        Principal = { AWS = "arn:aws:iam::${var.account_id}:root" }
+        Action    = "kms:*"
+        Resource  = "*"
+      },
+      {
+        Sid       = "AllowSNS"
+        Effect    = "Allow"
+        Principal = { Service = "sns.amazonaws.com" }
+        Action    = ["kms:GenerateDataKey", "kms:Decrypt"]
+        Resource  = "*"
+      },
+      {
+        Sid       = "AllowAthena"
+        Effect    = "Allow"
+        Principal = { Service = "athena.amazonaws.com" }
+        Action    = ["kms:GenerateDataKey", "kms:Decrypt", "kms:DescribeKey"]
+        Resource  = "*"
+      }
+    ]
+  })
+  tags = local.common_tags
+}
+
+resource "aws_kms_alias" "finops" {
+  name          = "alias/${var.project}-finops"
+  target_key_id = aws_kms_key.finops.key_id
+}
+
+# ─────────────────────────────────────────────
 # PHASE 1: VISIBILITY
 # CUR → S3 → Athena
 # ─────────────────────────────────────────────
@@ -54,6 +96,10 @@ resource "aws_cur_report_definition" "finops_cur" {
 resource "aws_athena_database" "finops" {
   name   = "${replace(var.project, "-", "_")}_finops"
   bucket = aws_s3_bucket.cur_bucket.bucket
+  encryption_configuration {
+    encryption_option = "SSE_KMS"
+    kms_key           = aws_kms_key.finops.arn
+  }
 }
 
 resource "aws_athena_workgroup" "finops" {
@@ -61,6 +107,10 @@ resource "aws_athena_workgroup" "finops" {
   configuration {
     result_configuration {
       output_location = "s3://${aws_s3_bucket.cur_bucket.bucket}/athena-results/"
+      encryption_configuration {
+        encryption_option = "SSE_KMS"
+        kms_key_arn       = aws_kms_key.finops.arn
+      }
     }
   }
   tags = local.common_tags
@@ -71,8 +121,9 @@ resource "aws_athena_workgroup" "finops" {
 # ─────────────────────────────────────────────
 
 resource "aws_sns_topic" "finops_alerts" {
-  name = "${var.project}-finops-alerts"
-  tags = local.common_tags
+  name              = "${var.project}-finops-alerts"
+  kms_master_key_id = aws_kms_key.finops.arn
+  tags              = local.common_tags
 }
 
 resource "aws_sns_topic_subscription" "email_alert" {
@@ -278,6 +329,90 @@ resource "aws_lambda_permission" "allow_eventbridge" {
   function_name = aws_lambda_function.cleanup.function_name
   principal     = "events.amazonaws.com"
   source_arn    = aws_cloudwatch_event_rule.nightly_cleanup.arn
+}
+
+# ─────────────────────────────────────────────
+# GAP FIX 1: COMPUTE OPTIMIZER — continuous optimization loop
+# Enables rightsizing recommendations for EC2, Lambda, EBS, ECS
+# ─────────────────────────────────────────────
+
+resource "aws_computeoptimizer_enrollment_status" "finops" {
+  status = "Active"
+}
+
+# ─────────────────────────────────────────────
+# GAP FIX 2: CHARGEBACK REPORT — cost allocation strategy
+# Monthly Lambda generates per-team cost report from Athena → SNS
+# ─────────────────────────────────────────────
+
+data "archive_file" "chargeback_zip" {
+  type        = "zip"
+  source_file = "${path.module}/../lambda/chargeback.py"
+  output_path = "${path.module}/../lambda/chargeback.zip"
+}
+
+resource "aws_lambda_function" "chargeback" {
+  function_name    = "${var.project}-chargeback"
+  role             = aws_iam_role.cleanup_lambda.arn
+  handler          = "chargeback.handler"
+  runtime          = "python3.12"
+  filename         = data.archive_file.chargeback_zip.output_path
+  source_code_hash = data.archive_file.chargeback_zip.output_base64sha256
+  timeout          = 300
+
+  environment {
+    variables = {
+      SNS_TOPIC_ARN = aws_sns_topic.finops_alerts.arn
+      ATHENA_DB     = aws_athena_database.finops.name
+      ATHENA_WG     = aws_athena_workgroup.finops.name
+      S3_BUCKET     = aws_s3_bucket.cur_bucket.bucket
+    }
+  }
+  tags = local.common_tags
+}
+
+# Run on 1st of every month at 8 AM UTC
+resource "aws_cloudwatch_event_rule" "monthly_chargeback" {
+  name                = "${var.project}-monthly-chargeback"
+  schedule_expression = "cron(0 8 1 * ? *)"
+}
+
+resource "aws_cloudwatch_event_target" "chargeback_target" {
+  rule      = aws_cloudwatch_event_rule.monthly_chargeback.name
+  target_id = "ChargebackLambda"
+  arn       = aws_lambda_function.chargeback.arn
+}
+
+resource "aws_lambda_permission" "allow_eventbridge_chargeback" {
+  statement_id  = "AllowEventBridgeChargeback"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.chargeback.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.monthly_chargeback.arn
+}
+
+# Extra IAM permissions needed for chargeback + compute optimizer
+resource "aws_iam_role_policy" "extra_lambda_policy" {
+  name = "chargeback-extra"
+  role = aws_iam_role.cleanup_lambda.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "athena:StartQueryExecution", "athena:GetQueryExecution",
+          "athena:GetQueryResults", "athena:StopQueryExecution",
+          "glue:GetTable", "glue:GetDatabase",
+          "s3:GetObject", "s3:PutObject", "s3:ListBucket",
+          "compute-optimizer:GetEC2InstanceRecommendations",
+          "compute-optimizer:GetLambdaFunctionRecommendations",
+          "compute-optimizer:GetEBSVolumeRecommendations"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
 }
 
 # ─────────────────────────────────────────────
