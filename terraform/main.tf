@@ -137,9 +137,20 @@ resource "aws_budgets_budget" "per_env" {
 # ─────────────────────────────────────────────
 
 resource "aws_ce_anomaly_monitor" "service_monitor" {
-  name              = "${var.project}-service-monitor"
-  monitor_type      = "DIMENSIONAL"
-  monitor_dimension = "SERVICE"
+  name         = "${var.project}-service-monitor"
+  monitor_type = "CUSTOM"
+  monitor_specification = jsonencode({
+    And            = null
+    Dimensions     = null
+    Not            = null
+    Or             = null
+    CostCategories = null
+    Tags = {
+      Key    = "Project"
+      Values = [var.project]
+      MatchOptions = ["EQUALS"]
+    }
+  })
 }
 
 resource "aws_ce_anomaly_subscription" "alert" {
