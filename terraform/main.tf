@@ -103,7 +103,8 @@ resource "aws_athena_database" "finops" {
 }
 
 resource "aws_athena_workgroup" "finops" {
-  name = "${var.project}-finops"
+  name          = "${var.project}-finops"
+  force_destroy = true
   configuration {
     result_configuration {
       output_location = "s3://${aws_s3_bucket.cur_bucket.bucket}/athena-results/"
