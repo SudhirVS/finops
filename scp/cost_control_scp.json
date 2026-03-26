@@ -1,0 +1,77 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "DenyExpensiveInstanceTypes",
+      "Effect": "Deny",
+      "Action": "ec2:RunInstances",
+      "Resource": "arn:aws:ec2:*:*:instance/*",
+      "Condition": {
+        "StringLike": {
+          "ec2:InstanceType": [
+            "p3.*", "p4.*", "p5.*",
+            "x1.*", "x2.*",
+            "u-*"
+          ]
+        },
+        "StringNotEquals": {
+          "aws:PrincipalTag/Role": "ml-approved"
+        }
+      }
+    },
+    {
+      "Sid": "DenyResourcesWithoutRequiredTags",
+      "Effect": "Deny",
+      "Action": [
+        "ec2:RunInstances",
+        "rds:CreateDBInstance",
+        "lambda:CreateFunction",
+        "eks:CreateCluster"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "Null": {
+          "aws:RequestTag/Environment": "true",
+          "aws:RequestTag/Project":     "true",
+          "aws:RequestTag/Owner":       "true"
+        }
+      }
+    },
+    {
+      "Sid": "DenyDisablingCostAllocationTags",
+      "Effect": "Deny",
+      "Action": [
+        "ce:DeleteCostCategoryDefinition",
+        "ce:UpdateCostAllocationTagsStatus"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "DenyLargeRDSInDev",
+      "Effect": "Deny",
+      "Action": "rds:CreateDBInstance",
+      "Resource": "*",
+      "Condition": {
+        "StringLike": {
+          "rds:DatabaseClass": [
+            "db.r5.*", "db.r6.*", "db.x1.*"
+          ]
+        },
+        "StringEquals": {
+          "aws:RequestTag/Environment": "dev"
+        }
+      }
+    },
+    {
+      "Sid": "DenyNATGatewayInDev",
+      "Effect": "Deny",
+      "Action": "ec2:CreateNatGateway",
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestTag/Environment": "dev"
+        }
+      }
+    }
+  ]
+}
