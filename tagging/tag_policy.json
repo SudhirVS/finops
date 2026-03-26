@@ -5,57 +5,26 @@
         "@@assign": "Environment"
       },
       "tag_value": {
-        "@@assign": ["dev", "stage", "prod"]
-      },
-      "enforced_for": {
         "@@assign": [
-          "ec2:instance",
-          "ec2:volume",
-          "rds:db",
-          "s3:bucket",
-          "elasticloadbalancing:loadbalancer",
-          "lambda:function",
-          "eks:cluster"
+          "dev",
+          "stage",
+          "prod"
         ]
       }
     },
     "Project": {
       "tag_key": {
         "@@assign": "Project"
-      },
-      "enforced_for": {
-        "@@assign": [
-          "ec2:instance",
-          "ec2:volume",
-          "rds:db",
-          "s3:bucket",
-          "elasticloadbalancing:loadbalancer",
-          "lambda:function"
-        ]
       }
     },
     "Owner": {
       "tag_key": {
         "@@assign": "Owner"
-      },
-      "enforced_for": {
-        "@@assign": [
-          "ec2:instance",
-          "rds:db",
-          "lambda:function"
-        ]
       }
     },
     "CostCenter": {
       "tag_key": {
         "@@assign": "CostCenter"
-      },
-      "enforced_for": {
-        "@@assign": [
-          "ec2:instance",
-          "rds:db",
-          "eks:cluster"
-        ]
       }
     }
   }

@@ -222,6 +222,7 @@ resource "aws_iam_role_policy" "cleanup_lambda_policy" {
           "ec2:DescribeInstances", "ec2:StopInstances",
           "ec2:DescribeVolumes", "ec2:DeleteVolume",
           "ec2:DescribeSnapshots", "ec2:DeleteSnapshot",
+          "ec2:DescribeImages",
           "elasticloadbalancing:DescribeLoadBalancers",
           "elasticloadbalancing:DescribeTargetGroups",
           "elasticloadbalancing:DeleteLoadBalancer",
